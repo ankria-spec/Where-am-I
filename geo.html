@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>המיקום שלי על המפה</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""
+    />
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .info-box {
+            position: absolute;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.95);
+            padding: 10px 14px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        #status { top: 10px; }
+        #address { top: 70px; max-width: 250px; }
+        #clicked-address { top: 140px; max-width: 250px; }
+
+        #locate-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: #0078ff;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        #locate-btn:hover {
+            background: #005fcc;
+        }
+
+        /* מצפן */
+        #compass {
+            position: absolute;
+            left: 10px;
+            bottom: 20px;
+            width: 70px;
+            height: 70px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            transform-origin: center;
+            transition: transform 0.2s linear;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="status" class="info-box">מאתר מיקום…</div>
+<div id="address" class="info-box">כתובת: —</div>
+<div id="clicked-address" class="info-box">כתובת נקודה: —</div>
+
+<button id="locate-btn">📍 מצא אותי</button>
+
+<div id="compass">🧭</div>
+
+<div id="map"></div>
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+</script>
+
+<script>
+    const statusBox = document.getElementById('status');
+    const addressBox = document.getElementById('address');
+    const clickedAddressBox = document.getElementById('clicked-address');
+    const locateBtn = document.getElementById('locate-btn');
+    const compass = document.getElementById('compass');
+
+    function setStatus(msg) { statusBox.textContent = msg; }
+    function setAddress(msg) { addressBox.textContent = "כתובת: " + msg; }
+    function setClickedAddress(msg) { clickedAddressBox.textContent = "כתובת נקודה: " + msg; }
+
+    const map = L.map('map').setView([31.8, 34.9], 10);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+    }).addTo(map);
+
+    let marker = null;
+    let accuracyCircle = null;
+    let clickedMarker = null;
+
+    async function reverseGeocode(lat, lng) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=he`;
+            const res = await fetch(url);
+            const data = await res.json();
+            return data.display_name || "לא נמצאה כתובת";
+        } catch (e) {
+            return "שגיאה בקבלת כתובת";
+        }
+    }
+
+    async function showPosition(pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const acc = pos.coords.accuracy;
+
+        setStatus(`מיקום: ${lat.toFixed(5)}, ${lng.toFixed(5)} (דיוק ~${Math.round(acc)} מ')`);
+
+        if (marker) map.removeLayer(marker);
+        if (accuracyCircle) map.removeLayer(accuracyCircle);
+
+        marker = L.marker([lat, lng]).addTo(map).bindPopup("את/ה כאן");
+        accuracyCircle = L.circle([lat, lng], {
+            radius: acc,
+            color: "#0078ff",
+            fillColor: "#0078ff",
+            fillOpacity: 0.2
+        }).addTo(map);
+
+        map.setView([lat, lng], 17);
+
+        const address = await reverseGeocode(lat, lng);
+        setAddress(address);
+    }
+
+    function handleError(err) {
+        setStatus("שגיאה בקבלת מיקום: " + err.message);
+    }
+
+    function locate() {
+        setStatus("מאתר מיקום…");
+        navigator.geolocation.getCurrentPosition(showPosition, handleError, {
+            enableHighAccuracy: true
+        });
+    }
+
+    locateBtn.addEventListener('click', locate);
+
+    locate();
+
+    // -----------------------------
+    // מצפן – כיוון המכשיר
+    // -----------------------------
+    if (window.DeviceOrientationEvent) {
+        window.addEventListener("deviceorientation", (event) => {
+            if (event.alpha !== null) {
+                const heading = 360 - event.alpha;
+                compass.style.transform = `rotate(${heading}deg)`;
+            }
+        });
+    }
+
+    // -----------------------------
+    // לחיצה על המפה → קבלת כתובת
+    // -----------------------------
+    map.on("click", async (e) => {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        if (clickedMarker) map.removeLayer(clickedMarker);
+
+        clickedMarker = L.marker([lat, lng]).addTo(map);
+
+        setClickedAddress("טוען כתובת…");
+
+        const address = await reverseGeocode(lat, lng);
+        setClickedAddress(address);
+    });
+</script>
+
+</body>
+</html>
