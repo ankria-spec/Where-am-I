@@ -41,7 +41,7 @@
         }
 
         /* ---------------------------------------------------------
-           שורת מידע עליונה — שקופה‑למחצה, מרכזית, קטנה יותר
+           שורת מידע עליונה — שקופה‑למחצה, מרכזית
         --------------------------------------------------------- */
         #top-bar {
             position: absolute;
@@ -59,12 +59,12 @@
         }
 
         #top-main {
-            font-size: 21px;   /* מוקטן ב־25% */
+            font-size: 21px;
             font-weight: bold;
         }
 
         #top-sub {
-            font-size: 12px;   /* מוקטן ב־25% */
+            font-size: 12px;
             margin-top: 4px;
         }
 
@@ -89,9 +89,8 @@
             backdrop-filter: blur(4px);
         }
 
-        /* מיקום חדש — האמצעי באמצע המסך */
         #bearing-box { top: 25vh; border-color: #aa00aa; }
-        #speed-box  { top: 40vh; border-color: #ff8800; } /* באמצע */
+        #speed-box  { top: 40vh; border-color: #ff8800; }
         #altitude-box { top: 55vh; border-color: #0078ff; }
 
         #compass {
@@ -112,7 +111,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 10px; /* רווח צדדי */
+            padding: 0 10px;
             z-index: 1000;
         }
 
@@ -126,14 +125,15 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            flex: 1;          /* כל כפתור מקבל רוחב שווה */
-            margin: 0 4px;    /* רווח בין כפתורים */
+            flex: 1;
+            margin: 0 4px;
         }
 
-        /* כפתור פעיל */
+        /* כפתור פעיל — כהה וברור */
         .dash-btn.active {
-            background: #0044aa !important;
-            box-shadow: inset 0 0 6px rgba(0,0,0,0.4);
+            background: #002266 !important;
+            border: 2px solid #000;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
         }
 
         /* קנה מידה */
@@ -158,7 +158,7 @@
 --------------------------------------------------------- -->
 <div id="top-bar">
     <div id="top-main">כיוון: —° | מהירות: 0 קמ״ש | גובה: — מ׳</div>
-    <div id="top-sub">קואורדינטות: —, —</div>
+    <div id="top-sub">כתובת: —</div>
 </div>
 
 <!-- ---------------------------------------------------------
@@ -200,6 +200,31 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+/* ---------------------------------------------------------
+   אפקט קולי ללחיצה על כפתורים
+--------------------------------------------------------- */
+function clickSound() {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.frequency.value = 420;
+    gain.gain.value = 0.15;
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.08);
+}
+
+/* כל הכפתורים מפעילים צליל */
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".dash-btn").forEach(btn => {
+        btn.addEventListener("click", clickSound);
+    });
+});
+
 /* ---------------------------------------------------------
    משתנים גלובליים
 --------------------------------------------------------- */
@@ -349,8 +374,9 @@ async function showPosition(pos) {
         `מהירות: ${speed ? Math.round(speed * 3.6) : 0} קמ״ש | ` +
         `גובה: — מ׳`;
 
-    document.getElementById("top-sub").textContent =
-        `קואורדינטות: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    /* כתובת */
+    const address = await reverseGeocode(lat, lng);
+    document.getElementById("top-sub").textContent = `כתובת: ${address}`;
 
     /* גובה */
     const altitude = await getAltitude(lat, lng);
