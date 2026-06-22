@@ -24,7 +24,6 @@
             height: 100%;
         }
 
-        /* תיבות מידע */
         .info-box {
             position: absolute;
             right: 10px;
@@ -42,7 +41,6 @@
         #address { top: 80px; max-width: 260px; }
         #clicked-address { top: 160px; max-width: 260px; }
 
-        /* כפתור מצא אותי */
         #locate-btn {
             position: absolute;
             bottom: 20px;
@@ -58,7 +56,6 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
-        /* כפתור קווי גובה */
         #contour-btn {
             position: absolute;
             bottom: 80px;
@@ -74,7 +71,6 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
-        /* מצפן */
         #compass {
             position: absolute;
             left: 10px;
@@ -94,7 +90,6 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
-        /* מד גובה */
         #altitude-box {
             position: absolute;
             left: 10px;
@@ -119,7 +114,6 @@
             color: #0078ff;
         }
 
-        /* מד מהירות */
         #speed-box {
             position: absolute;
             left: 10px;
@@ -144,7 +138,6 @@
             color: #ff8800;
         }
 
-        /* קנה מידה */
         #scale-box {
             position: absolute;
             bottom: 20px;
@@ -207,30 +200,26 @@
 
     const map = L.map('map').setView([31.8, 34.9], 13);
 
-    /* שכבת מפה רגילה */
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19
     }).addTo(map);
 
-    /* שכבת קווי גובה + הצללה */
-    const hillshade = L.tileLayer('https://tiles.wmflabs.org/hillshading/{z}/{x}/{y}.png', {
-        opacity: 0.5
-    });
-
-    const contours = L.tileLayer('https://tiles.wmflabs.org/contours/{z}/{x}/{y}.png', {
-        opacity: 0.7
-    });
+    const contourLayer = L.tileLayer(
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        {
+            maxZoom: 17,
+            opacity: 0.7
+        }
+    );
 
     let contoursVisible = false;
 
     contourBtn.onclick = () => {
         if (contoursVisible) {
-            map.removeLayer(hillshade);
-            map.removeLayer(contours);
+            map.removeLayer(contourLayer);
             contourBtn.style.background = "#00aa55";
         } else {
-            hillshade.addTo(map);
-            contours.addTo(map);
+            contourLayer.addTo(map);
             contourBtn.style.background = "#008844";
         }
         contoursVisible = !contoursVisible;
@@ -301,10 +290,8 @@
     }
 
     locateBtn.addEventListener('click', locate);
-
     locate();
 
-    /* מצפן */
     if (window.DeviceOrientationEvent) {
         window.addEventListener("deviceorientation", (event) => {
             if (event.alpha !== null) {
@@ -314,7 +301,6 @@
         });
     }
 
-    /* לחיצה על המפה → נקודה בלבד */
     map.on("click", async (e) => {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
