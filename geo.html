@@ -58,6 +58,22 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
+        /* כפתור קווי גובה */
+        #contour-btn {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            z-index: 1000;
+            background: #00aa55;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 50px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
         /* מצפן */
         #compass {
             position: absolute;
@@ -150,6 +166,7 @@
 <div id="clicked-address" class="info-box">כתובת נקודה: —</div>
 
 <button id="locate-btn">📍 מצא אותי</button>
+<button id="contour-btn">⛰ קווי גובה</button>
 
 <div id="compass">🧭</div>
 
@@ -181,6 +198,7 @@
     const speedValue = document.getElementById('speed-value');
     const scaleBox = document.getElementById('scale-box');
     const locateBtn = document.getElementById('locate-btn');
+    const contourBtn = document.getElementById('contour-btn');
     const compass = document.getElementById('compass');
 
     function setStatus(msg) { statusBox.textContent = msg; }
@@ -189,16 +207,34 @@
 
     const map = L.map('map').setView([31.8, 34.9], 13);
 
-    /* שכבת קווי גובה */
-    const contourLayer = L.tileLayer(
-        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-        { maxZoom: 17 }
-    ).addTo(map);
-
     /* שכבת מפה רגילה */
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19
     }).addTo(map);
+
+    /* שכבת קווי גובה + הצללה */
+    const hillshade = L.tileLayer('https://tiles.wmflabs.org/hillshading/{z}/{x}/{y}.png', {
+        opacity: 0.5
+    });
+
+    const contours = L.tileLayer('https://tiles.wmflabs.org/contours/{z}/{x}/{y}.png', {
+        opacity: 0.7
+    });
+
+    let contoursVisible = false;
+
+    contourBtn.onclick = () => {
+        if (contoursVisible) {
+            map.removeLayer(hillshade);
+            map.removeLayer(contours);
+            contourBtn.style.background = "#00aa55";
+        } else {
+            hillshade.addTo(map);
+            contours.addTo(map);
+            contourBtn.style.background = "#008844";
+        }
+        contoursVisible = !contoursVisible;
+    };
 
     let clickedMarker = null;
 
@@ -225,9 +261,9 @@
     }
 
     function updateScale() {
-        const halfWidth = map.getSize().x / 2;
+        const fullWidth = map.getSize().x;
         const p1 = map.containerPointToLatLng([0, map.getSize().y / 2]);
-        const p2 = map.containerPointToLatLng([halfWidth, map.getSize().y / 2]);
+        const p2 = map.containerPointToLatLng([fullWidth, map.getSize().y / 2]);
         const dist = map.distance(p1, p2);
 
         scaleBox.textContent = dist < 1000
