@@ -15,10 +15,7 @@
     </script>
 
     <!-- Leaflet -->
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
     <style>
         html, body {
@@ -44,14 +41,14 @@
         }
 
         /* ---------------------------------------------------------
-           שורת מידע עליונה — גבוהה, שקופה‑למחצה, מרכזית
+           שורת מידע עליונה — שקופה‑למחצה, מרכזית, קטנה יותר
         --------------------------------------------------------- */
         #top-bar {
             position: absolute;
             top: 0;
             width: 100%;
             height: 90px;
-            background: rgba(255,255,255,0.4); /* שקיפות בינונית */
+            background: rgba(255,255,255,0.4);
             backdrop-filter: blur(6px);
             display: flex;
             flex-direction: column;
@@ -62,17 +59,17 @@
         }
 
         #top-main {
-            font-size: 28px;
+            font-size: 21px;   /* מוקטן ב־25% */
             font-weight: bold;
         }
 
         #top-sub {
-            font-size: 16px;
+            font-size: 12px;   /* מוקטן ב־25% */
             margin-top: 4px;
         }
 
         /* ---------------------------------------------------------
-           עיגולים בצד שמאל — קטנים יותר, תוכן גדול
+           עיגולים בצד שמאל — ממוקמים מחדש
         --------------------------------------------------------- */
         .circle-box {
             position: absolute;
@@ -92,17 +89,18 @@
             backdrop-filter: blur(4px);
         }
 
-        #bearing-box { top: 110px; border-color: #aa00aa; }
-        #speed-box { top: 210px; border-color: #ff8800; }
-        #altitude-box { top: 310px; border-color: #0078ff; }
+        /* מיקום חדש — האמצעי באמצע המסך */
+        #bearing-box { top: 25vh; border-color: #aa00aa; }
+        #speed-box  { top: 40vh; border-color: #ff8800; } /* באמצע */
+        #altitude-box { top: 55vh; border-color: #0078ff; }
 
         #compass {
-            font-size: 48px; /* מצפן גדול */
+            font-size: 48px;
             margin-bottom: 4px;
         }
 
         /* ---------------------------------------------------------
-           דשבורד כפתורים בתחתית — שורה אחת
+           דשבורד כפתורים בתחתית — ריווח תקין
         --------------------------------------------------------- */
         #bottom-bar {
             position: absolute;
@@ -112,8 +110,9 @@
             background: rgba(255,255,255,0.4);
             backdrop-filter: blur(6px);
             display: flex;
-            justify-content: space-around;
+            justify-content: space-between;
             align-items: center;
+            padding: 0 10px; /* רווח צדדי */
             z-index: 1000;
         }
 
@@ -127,6 +126,14 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            flex: 1;          /* כל כפתור מקבל רוחב שווה */
+            margin: 0 4px;    /* רווח בין כפתורים */
+        }
+
+        /* כפתור פעיל */
+        .dash-btn.active {
+            background: #0044aa !important;
+            box-shadow: inset 0 0 6px rgba(0,0,0,0.4);
         }
 
         /* קנה מידה */
@@ -272,14 +279,26 @@ function distance3D(lat1, lng1, alt1, lat2, lng2, alt2) {
 /* ---------------------------------------------------------
    כפתורים
 --------------------------------------------------------- */
-document.getElementById("contour-btn").onclick = () => {
+const contourBtn = document.getElementById("contour-btn");
+const beepBtn = document.getElementById("beep-btn");
+
+contourBtn.onclick = () => {
     contoursVisible = !contoursVisible;
-    if (contoursVisible) contourLayer.addTo(map);
-    else map.removeLayer(contourLayer);
+
+    if (contoursVisible) {
+        contourLayer.addTo(map);
+        contourBtn.classList.add("active");
+    } else {
+        map.removeLayer(contourLayer);
+        contourBtn.classList.remove("active");
+    }
 };
 
-document.getElementById("beep-btn").onclick = () => {
+beepBtn.onclick = () => {
     beepEnabled = !beepEnabled;
+
+    if (beepEnabled) beepBtn.classList.add("active");
+    else beepBtn.classList.remove("active");
 };
 
 document.getElementById("track-start-btn").onclick = () => {
