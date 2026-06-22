@@ -5,12 +5,19 @@
     <title>מפת שטח משודרגת</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- ספריית Leaflet -->
+    <!-- ניסיון לנעול את המסך למצב אנכי -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock("portrait").catch(() => {});
+            }
+        });
+    </script>
+
+    <!-- Leaflet -->
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin=""
     />
 
     <style>
@@ -18,6 +25,17 @@
             height: 100%;
             margin: 0;
             font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* fallback: אם המכשיר מסתובב — מסובבים חזרה */
+        @media screen and (orientation: landscape) {
+            body {
+                transform: rotate(90deg);
+                transform-origin: center;
+                width: 100vh;
+                height: 100vw;
+            }
         }
 
         #map {
@@ -25,108 +43,123 @@
             height: 100%;
         }
 
-        /* תיבות מידע */
-        .info-box {
+        /* ---------------------------------------------------------
+           שורת מידע עליונה — גבוהה, שקופה‑למחצה, מרכזית
+        --------------------------------------------------------- */
+        #top-bar {
             position: absolute;
-            right: 10px;
+            top: 0;
+            width: 100%;
+            height: 90px;
+            background: rgba(255,255,255,0.4); /* שקיפות בינונית */
+            backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             z-index: 1000;
-            background: white;
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 2px solid #0078ff;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-            font-size: 13px;
-            line-height: 1.4;
+            text-align: center;
         }
 
-        #status { top: 10px; }
-        #address { top: 70px; max-width: 240px; }
-        #clicked-address { top: 140px; max-width: 240px; }
+        #top-main {
+            font-size: 28px;
+            font-weight: bold;
+        }
 
-        /* כפתורים */
-        .round-btn {
-            position: absolute;
-            right: 20px;
-            z-index: 1000;
-            background: #0078ff;
-            color: white;
-            border: none;
-            padding: 12px 18px;
-            border-radius: 50px;
+        #top-sub {
             font-size: 16px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            margin-top: 4px;
         }
 
-        #locate-btn { bottom: 20px; }
-        #contour-btn { bottom: 70px; background: #00aa55; }
-        #beep-btn { bottom: 120px; background: #cc6600; }
-        #track-start-btn { bottom: 170px; background: #4444cc; }
-        #track-stop-btn { bottom: 220px; background: #aa0000; }
-
-        /* עיגולים קטנים יותר */
+        /* ---------------------------------------------------------
+           עיגולים בצד שמאל — קטנים יותר, תוכן גדול
+        --------------------------------------------------------- */
         .circle-box {
             position: absolute;
             left: 10px;
             width: 85px;
             height: 85px;
-            background: white;
+            background: rgba(255,255,255,0.7);
             border-radius: 50%;
             border: 3px solid #0078ff;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             z-index: 1000;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
         }
 
-        /* מיקום העיגולים */
-        #altitude-box { bottom: 20px; }
-        #speed-box { bottom: 120px; border-color: #ff8800; }
-        #bearing-box { bottom: 220px; border-color: #aa00aa; }
+        #bearing-box { top: 110px; border-color: #aa00aa; }
+        #speed-box { top: 210px; border-color: #ff8800; }
+        #altitude-box { top: 310px; border-color: #0078ff; }
 
-        /* המצפן עצמו — גדול יותר */
         #compass {
-            font-size: 48px;
+            font-size: 48px; /* מצפן גדול */
             margin-bottom: 4px;
+        }
+
+        /* ---------------------------------------------------------
+           דשבורד כפתורים בתחתית — שורה אחת
+        --------------------------------------------------------- */
+        #bottom-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 70px;
+            background: rgba(255,255,255,0.4);
+            backdrop-filter: blur(6px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .dash-btn {
+            background: #0078ff;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
         /* קנה מידה */
         #scale-box {
             position: absolute;
-            bottom: 20px;
-            left: 120px;
-            background: white;
+            bottom: 80px;
+            left: 10px;
+            background: rgba(255,255,255,0.7);
             padding: 6px 12px;
             border-radius: 8px;
             border: 2px solid #444;
-            font-size: 13px;
+            font-size: 14px;
             z-index: 1000;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
         }
     </style>
 </head>
 <body>
 
-<!-- תיבות מידע -->
-<div id="status" class="info-box">מאתר מיקום…</div>
-<div id="address" class="info-box">כתובת: —</div>
-<div id="clicked-address" class="info-box">כתובת נקודה: —</div>
+<!-- ---------------------------------------------------------
+     שורת מידע עליונה
+--------------------------------------------------------- -->
+<div id="top-bar">
+    <div id="top-main">כיוון: —° | מהירות: 0 קמ״ש | גובה: — מ׳</div>
+    <div id="top-sub">קואורדינטות: —, —</div>
+</div>
 
-<!-- כפתורים -->
-<button id="locate-btn" class="round-btn">📍 מצא אותי</button>
-<button id="contour-btn" class="round-btn">⛰ קווי גובה</button>
-<button id="beep-btn" class="round-btn">🔔 צפצוף גובה</button>
-<button id="track-start-btn" class="round-btn">▶ התחל מסלול</button>
-<button id="track-stop-btn" class="round-btn">⏹ סיים מסלול</button>
-
-<!-- עיגולים -->
-<div id="altitude-box" class="circle-box">
-    <span id="altitude-value">—</span>
-    מ'
+<!-- ---------------------------------------------------------
+     עיגולים בצד שמאל
+--------------------------------------------------------- -->
+<div id="bearing-box" class="circle-box">
+    <div id="compass">🧭</div>
+    <span id="bearing-value">—°</span>
 </div>
 
 <div id="speed-box" class="circle-box">
@@ -134,29 +167,35 @@
     קמ״ש
 </div>
 
-<div id="bearing-box" class="circle-box">
-    <div id="compass">🧭</div>
-    <span id="bearing-value">—°</span>
+<div id="altitude-box" class="circle-box">
+    <span id="altitude-value">—</span>
+    מ'
 </div>
 
 <!-- קנה מידה -->
 <div id="scale-box">—</div>
 
+<!-- ---------------------------------------------------------
+     דשבורד כפתורים בתחתית
+--------------------------------------------------------- -->
+<div id="bottom-bar">
+    <button id="track-start-btn" class="dash-btn">▶ התחל מסלול</button>
+    <button id="track-stop-btn" class="dash-btn">⏹ סיים מסלול</button>
+    <button id="contour-btn" class="dash-btn">⛰ קווי גובה</button>
+    <button id="beep-btn" class="dash-btn">🔔 צפצוף גובה</button>
+    <button id="locate-btn" class="dash-btn">📍 מצא אותי</button>
+</div>
+
 <!-- מפה -->
 <div id="map"></div>
 
-<!-- ספריית Leaflet -->
-<script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin="">
-</script>
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* ---------------------------------------------------------
    משתנים גלובליים
 --------------------------------------------------------- */
-
 let beepEnabled = false;
 let lastAltitudeBand = null;
 
@@ -164,34 +203,15 @@ let tracking = false;
 let trackPoints = [];
 let trackLine = null;
 
-const statusBox = document.getElementById('status');
-const addressBox = document.getElementById('address');
-const clickedAddressBox = document.getElementById('clicked-address');
-const altitudeValue = document.getElementById('altitude-value');
-const speedValue = document.getElementById('speed-value');
-const bearingValue = document.getElementById('bearing-value');
-const scaleBox = document.getElementById('scale-box');
-
-const locateBtn = document.getElementById('locate-btn');
-const contourBtn = document.getElementById('contour-btn');
-const beepBtn = document.getElementById('beep-btn');
-const trackStartBtn = document.getElementById('track-start-btn');
-const trackStopBtn = document.getElementById('track-stop-btn');
-
-const compass = document.getElementById('compass');
-
 /* ---------------------------------------------------------
    יצירת מפה
 --------------------------------------------------------- */
-
 const map = L.map('map').setView([31.8, 34.9], 13);
 
-/* שכבת מפה רגילה */
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
 }).addTo(map);
 
-/* שכבת קווי גובה */
 const contourLayer = L.tileLayer(
     'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     { maxZoom: 17, opacity: 0.7 }
@@ -200,21 +220,7 @@ const contourLayer = L.tileLayer(
 let contoursVisible = false;
 
 /* ---------------------------------------------------------
-   כפתור קווי גובה
---------------------------------------------------------- */
-contourBtn.onclick = () => {
-    if (contoursVisible) {
-        map.removeLayer(contourLayer);
-        contourBtn.style.background = "#00aa55";
-    } else {
-        contourLayer.addTo(map);
-        contourBtn.style.background = "#008844";
-    }
-    contoursVisible = !contoursVisible;
-};
-
-/* ---------------------------------------------------------
-   פונקציית צפצוף
+   פונקציות עזר
 --------------------------------------------------------- */
 function beep() {
     const ctx = new AudioContext();
@@ -225,15 +231,6 @@ function beep() {
     osc.stop(ctx.currentTime + 0.15);
 }
 
-/* כפתור הפעלה/כיבוי צפצוף */
-beepBtn.onclick = () => {
-    beepEnabled = !beepEnabled;
-    beepBtn.style.background = beepEnabled ? "#aa3300" : "#cc6600";
-};
-
-/* ---------------------------------------------------------
-   Reverse Geocoding
---------------------------------------------------------- */
 async function reverseGeocode(lat, lng) {
     try {
         const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=he`;
@@ -245,9 +242,6 @@ async function reverseGeocode(lat, lng) {
     }
 }
 
-/* ---------------------------------------------------------
-   גובה
---------------------------------------------------------- */
 async function getAltitude(lat, lng) {
     try {
         const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`;
@@ -259,23 +253,16 @@ async function getAltitude(lat, lng) {
     }
 }
 
-/* ---------------------------------------------------------
-   קנה מידה — רוחב מסך מלא
---------------------------------------------------------- */
 function updateScale() {
     const fullWidth = map.getSize().x;
     const p1 = map.containerPointToLatLng([0, map.getSize().y / 2]);
     const p2 = map.containerPointToLatLng([fullWidth, map.getSize().y / 2]);
     const dist = map.distance(p1, p2);
 
-    scaleBox.textContent = dist < 1000
-        ? `${Math.round(dist)} מ'`
-        : `${(dist / 1000).toFixed(2)} ק״מ`;
+    document.getElementById("scale-box").textContent =
+        dist < 1000 ? `${Math.round(dist)} מ'` : `${(dist / 1000).toFixed(2)} ק״מ`;
 }
 
-/* ---------------------------------------------------------
-   חישוב מרחק 3D (כולל שיפועים)
---------------------------------------------------------- */
 function distance3D(lat1, lng1, alt1, lat2, lng2, alt2) {
     const d2d = map.distance([lat1, lng1], [lat2, lng2]);
     const dAlt = alt2 - alt1;
@@ -283,22 +270,26 @@ function distance3D(lat1, lng1, alt1, lat2, lng2, alt2) {
 }
 
 /* ---------------------------------------------------------
-   התחלת מסלול
+   כפתורים
 --------------------------------------------------------- */
-trackStartBtn.onclick = () => {
+document.getElementById("contour-btn").onclick = () => {
+    contoursVisible = !contoursVisible;
+    if (contoursVisible) contourLayer.addTo(map);
+    else map.removeLayer(contourLayer);
+};
+
+document.getElementById("beep-btn").onclick = () => {
+    beepEnabled = !beepEnabled;
+};
+
+document.getElementById("track-start-btn").onclick = () => {
     tracking = true;
     trackPoints = [];
     if (trackLine) map.removeLayer(trackLine);
-    trackLine = null;
-    trackStartBtn.style.background = "#2222aa";
 };
 
-/* ---------------------------------------------------------
-   סיום מסלול
---------------------------------------------------------- */
-trackStopBtn.onclick = () => {
+document.getElementById("track-stop-btn").onclick = () => {
     tracking = false;
-    trackStartBtn.style.background = "#4444cc";
 
     if (trackPoints.length < 2) {
         alert("אין מספיק נתונים למסלול");
@@ -322,8 +313,10 @@ trackStopBtn.onclick = () => {
     );
 };
 
+document.getElementById("locate-btn").onclick = locate;
+
 /* ---------------------------------------------------------
-   הצגת מיקום
+   מיקום
 --------------------------------------------------------- */
 async function showPosition(pos) {
     const lat = pos.coords.latitude;
@@ -331,23 +324,28 @@ async function showPosition(pos) {
     const speed = pos.coords.speed;
     const bearing = pos.coords.heading;
 
-    statusBox.textContent = `מיקום: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    /* עדכון שורת מידע עליונה */
+    document.getElementById("top-main").textContent =
+        `כיוון: ${bearing ? Math.round(bearing) : "—"}° | ` +
+        `מהירות: ${speed ? Math.round(speed * 3.6) : 0} קמ״ש | ` +
+        `גובה: — מ׳`;
 
-    /* כתובת */
-    const address = await reverseGeocode(lat, lng);
-    addressBox.textContent = "כתובת: " + address;
+    document.getElementById("top-sub").textContent =
+        `קואורדינטות: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
     /* גובה */
     const altitude = await getAltitude(lat, lng);
-    altitudeValue.textContent = altitude !== null ? altitude : "—";
+    document.getElementById("altitude-value").textContent =
+        altitude !== null ? altitude : "—";
 
     /* מהירות */
-    speedValue.textContent = speed ? Math.round(speed * 3.6) : 0;
+    document.getElementById("speed-value").textContent =
+        speed ? Math.round(speed * 3.6) : 0;
 
-    /* כיוון תנועה */
+    /* כיוון */
     if (bearing !== null) {
-        bearingValue.textContent = Math.round(bearing) + "°";
-        compass.style.transform = `rotate(${bearing}deg)`;
+        document.getElementById("bearing-value").textContent = Math.round(bearing) + "°";
+        document.getElementById("compass").style.transform = `rotate(${bearing}deg)`;
     }
 
     /* צפצוף חציית קו גובה */
@@ -370,17 +368,12 @@ async function showPosition(pos) {
     map.setView([lat, lng], 16);
 }
 
-/* ---------------------------------------------------------
-   טעינת מיקום
---------------------------------------------------------- */
 function locate() {
-    statusBox.textContent = "מאתר מיקום…";
-    navigator.geolocation.getCurrentPosition(showPosition, err => {
-        statusBox.textContent = "שגיאה: " + err.message;
-    }, { enableHighAccuracy: true });
+    navigator.geolocation.getCurrentPosition(showPosition, () => {}, {
+        enableHighAccuracy: true
+    });
 }
 
-locateBtn.onclick = locate;
 locate();
 
 /* ---------------------------------------------------------
@@ -390,32 +383,10 @@ if (window.DeviceOrientationEvent) {
     window.addEventListener("deviceorientation", (event) => {
         if (event.alpha !== null) {
             const heading = 360 - event.alpha;
-            compass.style.transform = `rotate(${heading}deg)`;
+            document.getElementById("compass").style.transform = `rotate(${heading}deg)`;
         }
     });
 }
-
-/* ---------------------------------------------------------
-   לחיצה על המפה — נקודה ננעצת
---------------------------------------------------------- */
-let clickedMarker = null;
-
-map.on("click", async (e) => {
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
-
-    if (clickedMarker) map.removeLayer(clickedMarker);
-
-    clickedMarker = L.marker([lat, lng]).addTo(map);
-
-    clickedAddressBox.textContent = "טוען כתובת…";
-
-    const address = await reverseGeocode(lat, lng);
-    clickedAddressBox.textContent = "כתובת נקודה: " + address;
-
-    const altitude = await getAltitude(lat, lng);
-    altitudeValue.textContent = altitude !== null ? altitude : "—";
-});
 
 /* ---------------------------------------------------------
    קנה מידה
