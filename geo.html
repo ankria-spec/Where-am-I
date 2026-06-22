@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>המיקום שלי על המפה</title>
+    <title>מפת שטח משודרגת</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link
@@ -58,7 +58,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
-        /* מצפן גדול */
+        /* מצפן */
         #compass {
             position: absolute;
             left: 10px;
@@ -127,6 +127,20 @@
             font-size: 28px;
             color: #ff8800;
         }
+
+        /* קנה מידה */
+        #scale-box {
+            position: absolute;
+            bottom: 20px;
+            left: 140px;
+            background: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -149,6 +163,8 @@
     קמ״ש
 </div>
 
+<div id="scale-box">—</div>
+
 <div id="map"></div>
 
 <script
@@ -163,6 +179,7 @@
     const clickedAddressBox = document.getElementById('clicked-address');
     const altitudeValue = document.getElementById('altitude-value');
     const speedValue = document.getElementById('speed-value');
+    const scaleBox = document.getElementById('scale-box');
     const locateBtn = document.getElementById('locate-btn');
     const compass = document.getElementById('compass');
 
@@ -170,14 +187,19 @@
     function setAddress(msg) { addressBox.textContent = "כתובת: " + msg; }
     function setClickedAddress(msg) { clickedAddressBox.textContent = "כתובת נקודה: " + msg; }
 
-    const map = L.map('map').setView([31.8, 34.9], 10);
+    const map = L.map('map').setView([31.8, 34.9], 13);
 
+    /* שכבת קווי גובה */
+    const contourLayer = L.tileLayer(
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        { maxZoom: 17 }
+    ).addTo(map);
+
+    /* שכבת מפה רגילה */
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19
     }).addTo(map);
 
-    let marker = null;
-    let accuracyCircle = null;
     let clickedMarker = null;
 
     async function reverseGeocode(lat, lng) {
@@ -202,25 +224,22 @@
         }
     }
 
+    function updateScale() {
+        const halfWidth = map.getSize().x / 2;
+        const p1 = map.containerPointToLatLng([0, map.getSize().y / 2]);
+        const p2 = map.containerPointToLatLng([halfWidth, map.getSize().y / 2]);
+        const dist = map.distance(p1, p2);
+
+        scaleBox.textContent = dist < 1000
+            ? `${Math.round(dist)} מ'`
+            : `${(dist / 1000).toFixed(2)} ק״מ`;
+    }
+
     async function showPosition(pos) {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const acc = pos.coords.accuracy;
 
-        setStatus(`מיקום: ${lat.toFixed(5)}, ${lng.toFixed(5)} (דיוק ~${Math.round(acc)} מ')`);
-
-        if (marker) map.removeLayer(marker);
-        if (accuracyCircle) map.removeLayer(accuracyCircle);
-
-        marker = L.marker([lat, lng]).addTo(map).bindPopup("את/ה כאן");
-        accuracyCircle = L.circle([lat, lng], {
-            radius: acc,
-            color: "#0078ff",
-            fillColor: "#0078ff",
-            fillOpacity: 0.2
-        }).addTo(map);
-
-        map.setView([lat, lng], 17);
+        setStatus(`מיקום: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
 
         const address = await reverseGeocode(lat, lng);
         setAddress(address);
@@ -230,6 +249,8 @@
 
         const speed = pos.coords.speed;
         speedValue.textContent = speed ? Math.round(speed * 3.6) : 0;
+
+        map.setView([lat, lng], 16);
     }
 
     function handleError(err) {
@@ -247,7 +268,7 @@
 
     locate();
 
-    // מצפן
+    /* מצפן */
     if (window.DeviceOrientationEvent) {
         window.addEventListener("deviceorientation", (event) => {
             if (event.alpha !== null) {
@@ -257,7 +278,7 @@
         });
     }
 
-    // לחיצה על המפה → כתובת + גובה
+    /* לחיצה על המפה → נקודה בלבד */
     map.on("click", async (e) => {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
@@ -274,6 +295,9 @@
         const altitude = await getAltitude(lat, lng);
         altitudeValue.textContent = altitude !== null ? altitude : "—";
     });
+
+    map.on("move", updateScale);
+    updateScale();
 </script>
 
 </body>
