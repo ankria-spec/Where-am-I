@@ -25,7 +25,6 @@
             overflow: hidden;
         }
 
-        /* fallback: אם המכשיר מסתובב — מסובבים חזרה */
         @media screen and (orientation: landscape) {
             body {
                 transform: rotate(90deg);
@@ -41,7 +40,7 @@
         }
 
         /* ---------------------------------------------------------
-           שורת מידע עליונה — שקופה‑למחצה, מרכזית
+           שורת מידע עליונה
         --------------------------------------------------------- */
         #top-bar {
             position: absolute;
@@ -64,16 +63,16 @@
         }
 
         #top-sub {
-            font-size: 10px;          /* מוקטן */
+            font-size: 10px;
             margin-top: 4px;
-            max-width: 90%;           /* מונע גלישה */
-            white-space: nowrap;      /* שורה אחת */
-            overflow: hidden;         /* מסתיר גלישה */
-            text-overflow: ellipsis;  /* ... בסוף */
+            max-width: 90%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* ---------------------------------------------------------
-           עיגולים בצד שמאל — ממוקמים מחדש
+           עיגולים בצד שמאל
         --------------------------------------------------------- */
         .circle-box {
             position: absolute;
@@ -103,7 +102,7 @@
         }
 
         /* ---------------------------------------------------------
-           דשבורד כפתורים בתחתית — ריווח תקין
+           דשבורד כפתורים בתחתית
         --------------------------------------------------------- */
         #bottom-bar {
             position: absolute;
@@ -133,14 +132,12 @@
             margin: 0 4px;
         }
 
-        /* כפתור פעיל — כהה וברור */
         .dash-btn.active {
             background: #001a44 !important;
             border: 2px solid #000;
             box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
         }
 
-        /* קנה מידה */
         #scale-box {
             position: absolute;
             bottom: 80px;
@@ -153,21 +150,22 @@
             z-index: 1000;
             backdrop-filter: blur(4px);
         }
+
+        /* ---------------------------------------------------------
+           אייקון חץ — חדש
+        --------------------------------------------------------- */
+        .my-arrow {
+            transform-origin: center;
+        }
     </style>
 </head>
 <body>
 
-<!-- ---------------------------------------------------------
-     שורת מידע עליונה
---------------------------------------------------------- -->
 <div id="top-bar">
     <div id="top-main">כיוון: —° | מהירות: 0 קמ״ש | גובה: — מ׳</div>
     <div id="top-sub">כתובת: —</div>
 </div>
 
-<!-- ---------------------------------------------------------
-     עיגולים בצד שמאל
---------------------------------------------------------- -->
 <div id="bearing-box" class="circle-box">
     <div id="compass">🧭</div>
     <span id="bearing-value">—°</span>
@@ -183,12 +181,8 @@
     מ'
 </div>
 
-<!-- קנה מידה -->
 <div id="scale-box">—</div>
 
-<!-- ---------------------------------------------------------
-     דשבורד כפתורים בתחתית
---------------------------------------------------------- -->
 <div id="bottom-bar">
     <button id="track-start-btn" class="dash-btn">▶ התחל מסלול</button>
     <button id="track-stop-btn" class="dash-btn">⏹ סיים מסלול</button>
@@ -197,15 +191,13 @@
     <button id="locate-btn" class="dash-btn">📍 מצא אותי</button>
 </div>
 
-<!-- מפה -->
 <div id="map"></div>
 
-<!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* ---------------------------------------------------------
-   אפקט קולי ללחיצה על כפתורים
+   צליל לחיצה
 --------------------------------------------------------- */
 let clickCtx = null;
 
@@ -256,6 +248,21 @@ const contourLayer = L.tileLayer(
 );
 
 let contoursVisible = false;
+
+/* ---------------------------------------------------------
+   אייקון חץ — חדש
+--------------------------------------------------------- */
+const arrowIcon = L.icon({
+    iconUrl: "data:image/svg+xml;utf8,\
+    <svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 100 100'>\
+        <polygon points='50,5 90,95 50,75 10,95' fill='#0078ff' stroke='black' stroke-width='4'/>\
+    </svg>",
+    iconSize: [40, 40],
+    className: "my-arrow"
+});
+
+let arrowMarker = null;
+let lastHeading = 0;
 
 /* ---------------------------------------------------------
    פונקציות עזר
@@ -366,7 +373,7 @@ document.getElementById("track-stop-btn").onclick = () => {
 document.getElementById("locate-btn").onclick = locate;
 
 /* ---------------------------------------------------------
-   מיקום — עכשיו עם watchPosition
+   מיקום — watchPosition + חץ
 --------------------------------------------------------- */
 async function showPosition(pos) {
     const lat = pos.coords.latitude;
@@ -374,32 +381,35 @@ async function showPosition(pos) {
     const speed = pos.coords.speed;
     const bearing = pos.coords.heading;
 
-    /* עדכון שורת מידע עליונה */
     document.getElementById("top-main").textContent =
         `כיוון: ${bearing ? Math.round(bearing) : "—"}° | ` +
         `מהירות: ${speed ? Math.round(speed * 3.6) : 0} קמ״ש | ` +
         `גובה: — מ׳`;
 
-    /* כתובת */
     const address = await reverseGeocode(lat, lng);
     document.getElementById("top-sub").textContent = `כתובת: ${address}`;
 
-    /* גובה */
     const altitude = await getAltitude(lat, lng);
     document.getElementById("altitude-value").textContent =
         altitude !== null ? altitude : "—";
 
-    /* מהירות */
     document.getElementById("speed-value").textContent =
         speed ? Math.round(speed * 3.6) : 0;
 
-    /* כיוון */
-    if (bearing !== null) {
-        document.getElementById("bearing-value").textContent = Math.round(bearing) + "°";
-        document.getElementById("compass").style.transform = `rotate(${bearing}deg)`;
+    /* יצירת חץ אם לא קיים */
+    if (!arrowMarker) {
+        arrowMarker = L.marker([lat, lng], { icon: arrowIcon }).addTo(map);
+    } else {
+        arrowMarker.setLatLng([lat, lng]);
     }
 
-    /* צפצוף חציית קו גובה */
+    /* סיבוב החץ לפי GPS */
+    if (bearing !== null) {
+        lastHeading = bearing;
+        arrowMarker.getElement().style.transform = `rotate(${bearing}deg)`;
+    }
+
+    /* צפצוף קווי גובה */
     if (altitude !== null) {
         const band = Math.floor(altitude / 10);
         if (lastAltitudeBand !== null && band !== lastAltitudeBand && beepEnabled) {
@@ -425,6 +435,10 @@ function locate() {
         maximumAge: 1000,
         timeout: 5000
     });
+
+    if (arrowMarker) {
+        map.setView(arrowMarker.getLatLng(), 16);
+    }
 }
 
 locate();
@@ -434,9 +448,10 @@ locate();
 --------------------------------------------------------- */
 if (window.DeviceOrientationEvent) {
     window.addEventListener("deviceorientation", (event) => {
-        if (event.alpha !== null) {
+        if (event.alpha !== null && arrowMarker) {
             const heading = 360 - event.alpha;
-            document.getElementById("compass").style.transform = `rotate(${heading}deg)`;
+            lastHeading = heading;
+            arrowMarker.getElement().style.transform = `rotate(${heading}deg)`;
         }
     });
 }
