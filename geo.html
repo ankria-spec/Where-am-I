@@ -53,12 +53,12 @@
         }
 
         #top-main {
-            font-size: 15px;   /* קטן יותר */
+            font-size: 15px;
             font-weight: bold;
         }
 
         #top-sub {
-            font-size: 14px;   /* גדול יותר */
+            font-size: 14px;
             font-weight: bold;
             margin-top: 4px;
             max-width: 90%;
@@ -145,7 +145,7 @@
         }
 
         /* ---------------------------------------------------------
-           חץ מיקום — חשוב!
+           חץ מיקום — תקין
         --------------------------------------------------------- */
         .my-arrow {
             transform-origin: center;
@@ -216,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
    משתנים גלובליים
 --------------------------------------------------------- */
 let beepEnabled = false;
-let followMe = false;   // חדש — מצב "מצא אותי"
+let followMe = false;
 let lastAltitudeBand = null;
 
 let tracking = false;
@@ -228,7 +228,7 @@ let trackLine = null;
 --------------------------------------------------------- */
 const map = L.map('map').setView([31.8, 34.9], 13);
 
-const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
 }).addTo(map);
 
@@ -240,16 +240,20 @@ const contourLayer = L.tileLayer(
 let contoursVisible = false;
 
 /* ---------------------------------------------------------
-   אייקון חץ — משופר
+   חץ מיקום — תקין
 --------------------------------------------------------- */
-const arrowIcon = L.icon({
-    iconUrl: "data:image/svg+xml;utf8,\
-    <svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 100 100'>\
-        <polygon points='50,5 90,95 50,75 10,95' fill='#0078ff' stroke='black' stroke-width='6'/>\
-    </svg>",
+const arrowIcon = L.divIcon({
+    html: `
+        <svg width="50" height="50" viewBox="0 0 100 100">
+            <polygon points="50,5 90,95 50,75 10,95"
+                     fill="#0078ff"
+                     stroke="black"
+                     stroke-width="6"/>
+        </svg>
+    `,
+    className: "my-arrow",
     iconSize: [50, 50],
-    iconAnchor: [25, 25],
-    className: "my-arrow"
+    iconAnchor: [25, 25]
 });
 
 let arrowMarker = null;
@@ -292,11 +296,7 @@ function updateScale() {
 /* ---------------------------------------------------------
    כפתורים
 --------------------------------------------------------- */
-const contourBtn = document.getElementById("contour-btn");
-const beepBtn = document.getElementById("beep-btn");
-const locateBtn = document.getElementById("locate-btn");
-
-contourBtn.onclick = () => {
+document.getElementById("contour-btn").onclick = () => {
     contoursVisible = !contoursVisible;
     if (contoursVisible) {
         contourLayer.addTo(map);
@@ -307,13 +307,13 @@ contourBtn.onclick = () => {
     }
 };
 
-beepBtn.onclick = () => {
+document.getElementById("beep-btn").onclick = () => {
     beepEnabled = !beepEnabled;
     if (beepEnabled) beepBtn.classList.add("active");
     else beepBtn.classList.remove("active");
 };
 
-locateBtn.onclick = () => {
+document.getElementById("locate-btn").onclick = () => {
     followMe = !followMe;
     if (followMe) locateBtn.classList.add("active");
     else locateBtn.classList.remove("active");
