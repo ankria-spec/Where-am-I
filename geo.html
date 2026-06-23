@@ -53,12 +53,12 @@
         }
 
         #top-main {
-            font-size: 15px;
+            font-size: 14px;   /* קטן יותר */
             font-weight: bold;
         }
 
         #top-sub {
-            font-size: 14px;
+            font-size: 16px;   /* גדול יותר */
             font-weight: bold;
             margin-top: 4px;
             max-width: 90%;
@@ -145,9 +145,11 @@
         }
 
         /* ---------------------------------------------------------
-           חץ מיקום — תקין
+           חץ מיקום — יציב, ללא הבהובים
         --------------------------------------------------------- */
-        .my-arrow {
+        .arrow-wrapper {
+            width: 50px;
+            height: 50px;
             transform-origin: center;
         }
     </style>
@@ -223,6 +225,8 @@ let tracking = false;
 let trackPoints = [];
 let trackLine = null;
 
+let pinMarker = null;
+
 /* ---------------------------------------------------------
    מפה
 --------------------------------------------------------- */
@@ -240,18 +244,20 @@ const contourLayer = L.tileLayer(
 let contoursVisible = false;
 
 /* ---------------------------------------------------------
-   חץ מיקום — תקין
+   חץ מיקום — יציב
 --------------------------------------------------------- */
 const arrowIcon = L.divIcon({
     html: `
-        <svg width="50" height="50" viewBox="0 0 100 100">
-            <polygon points="50,5 90,95 50,75 10,95"
-                     fill="#0078ff"
-                     stroke="black"
-                     stroke-width="6"/>
-        </svg>
+        <div class="arrow-wrapper">
+            <svg width="50" height="50" viewBox="0 0 100 100">
+                <polygon points="50,5 90,95 50,75 10,95"
+                         fill="#0078ff"
+                         stroke="black"
+                         stroke-width="6"/>
+            </svg>
+        </div>
     `,
-    className: "my-arrow",
+    className: "",
     iconSize: [50, 50],
     iconAnchor: [25, 25]
 });
@@ -320,17 +326,22 @@ document.getElementById("locate-btn").onclick = () => {
 };
 
 /* ---------------------------------------------------------
-   לחיצה על המפה — החזרת כתובת
+   לחיצה על המפה — סימון + כתובת
 --------------------------------------------------------- */
 map.on("click", async (e) => {
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
+
+    if (pinMarker) map.removeLayer(pinMarker);
+
+    pinMarker = L.marker([lat, lng]).addTo(map);
+
     const address = await reverseGeocode(lat, lng);
     document.getElementById("top-sub").textContent = `כתובת: ${address}`;
 });
 
 /* ---------------------------------------------------------
-   מיקום — watchPosition + חץ
+   מיקום — watchPosition + חץ יציב
 --------------------------------------------------------- */
 navigator.geolocation.watchPosition(showPosition, () => {}, {
     enableHighAccuracy: true,
@@ -359,19 +370,22 @@ async function showPosition(pos) {
     document.getElementById("speed-value").textContent =
         speed ? Math.round(speed * 3.6) : 0;
 
-    /* חץ */
+    /* חץ יציב */
     if (!arrowMarker) {
         arrowMarker = L.marker([lat, lng], { icon: arrowIcon }).addTo(map);
     } else {
         arrowMarker.setLatLng([lat, lng]);
     }
 
+    const arrowDiv = arrowMarker.getElement().querySelector(".arrow-wrapper");
+
     if (bearing !== null) {
         lastHeading = bearing;
-        arrowMarker.getElement().style.transform = `rotate(${bearing}deg)`;
     }
 
-    if (followMe && arrowMarker) {
+    arrowDiv.style.transform = `rotate(${lastHeading}deg)`;
+
+    if (followMe) {
         map.setView([lat, lng], 16);
     }
 
@@ -389,9 +403,9 @@ async function showPosition(pos) {
 if (window.DeviceOrientationEvent) {
     window.addEventListener("deviceorientation", (event) => {
         if (event.alpha !== null && arrowMarker) {
-            const heading = 360 - event.alpha;
-            lastHeading = heading;
-            arrowMarker.getElement().style.transform = `rotate(${heading}deg)`;
+            lastHeading = 360 - event.alpha;
+            const arrowDiv = arrowMarker.getElement().querySelector(".arrow-wrapper");
+            arrowDiv.style.transform = `rotate(${lastHeading}deg)`;
         }
     });
 }
