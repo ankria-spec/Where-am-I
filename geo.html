@@ -35,14 +35,14 @@
         #map { width: 100%; height: 100%; }
 
         /* ---------------------------------------------------------
-           מסגרת עליונה
+           ⭐ מסגרת עליונה — עכשיו גבוהה יותר + שתי שורות
         --------------------------------------------------------- */
         #top-bar {
             position: absolute;
             top: 0;
             width: 100%;
-            height: 90px;
-            background: rgba(255,255,255,0.4);
+            height: 120px;
+            background: rgba(255,255,255,0.45);
             backdrop-filter: blur(6px);
             display: flex;
             flex-direction: column;
@@ -50,6 +50,7 @@
             justify-content: center;
             z-index: 1000;
             text-align: center;
+            padding: 5px 10px;
         }
 
         #top-main {
@@ -60,11 +61,10 @@
         #top-sub {
             font-size: 16px;
             font-weight: bold;
-            margin-top: 4px;
-            max-width: 90%;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            margin-top: 6px;
+            max-width: 95%;
+            white-space: normal;
+            line-height: 1.2;
         }
 
         /* ---------------------------------------------------------
@@ -95,7 +95,7 @@
         #compass { font-size: 48px; margin-bottom: 4px; }
 
         /* ---------------------------------------------------------
-           כפתורים בתחתית — מעודכן
+           ⭐ כפתורים בתחתית — כולל אנימציית לחיצה
         --------------------------------------------------------- */
         #bottom-bar {
             position: absolute;
@@ -126,13 +126,34 @@
             transition: all 0.15s ease;
         }
 
-        /* ⭐ מצב פעיל — בולט וברור */
+        .dash-btn:active {
+            transform: scale(0.92);
+        }
+
         .dash-btn.active {
             background: #002266 !important;
             color: #ffffff !important;
             border: 3px solid #ffffff !important;
             box-shadow: inset 0 0 12px rgba(0,0,0,0.8);
             transform: scale(1.07);
+        }
+
+        /* ---------------------------------------------------------
+           ⭐ תיבת מידע מסלול
+        --------------------------------------------------------- */
+        #track-info {
+            position: absolute;
+            bottom: 155px;
+            right: 10px;
+            background: rgba(255,255,255,0.75);
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 2px solid #333;
+            font-size: 15px;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(4px);
         }
 
         #scale-box {
@@ -182,6 +203,13 @@
 
 <div id="scale-box">—</div>
 
+<!-- ⭐ תיבת מידע מסלול -->
+<div id="track-info">
+    מרחק 2D: 0 מ׳  
+    <br>
+    מרחק 3D: 0 מ׳
+</div>
+
 <div id="bottom-bar">
     <button id="track-start-btn" class="dash-btn">▶ התחל מסלול</button>
     <button id="track-stop-btn" class="dash-btn">⏹ סיים מסלול</button>
@@ -230,6 +258,10 @@ let trackPoints = [];
 let trackLine = null;
 
 let pinMarker = null;
+
+/* ⭐ מרחקים */
+let total2D = 0;
+let total3D = 0;
 
 /* ---------------------------------------------------------
    מפה
@@ -294,6 +326,12 @@ async function getAltitude(lat, lng) {
     }
 }
 
+function distance3D(lat1, lng1, alt1, lat2, lng2, alt2) {
+    const d2d = map.distance([lat1, lng1], [lat2, lng2]);
+    const dAlt = alt2 - alt1;
+    return Math.sqrt(d2d*d2d + dAlt*dAlt);
+}
+
 function updateScale() {
     const fullWidth = map.getSize().x;
     const p1 = map.containerPointToLatLng([0, map.getSize().y / 2]);
@@ -309,6 +347,8 @@ function updateScale() {
 const contourBtn = document.getElementById("contour-btn");
 const beepBtn = document.getElementById("beep-btn");
 const locateBtn = document.getElementById("locate-btn");
+const trackStartBtn = document.getElementById("track-start-btn");
+const trackStopBtn = document.getElementById("track-stop-btn");
 
 contourBtn.onclick = () => {
     contoursVisible = !contoursVisible;
@@ -333,6 +373,24 @@ locateBtn.onclick = () => {
     else locateBtn.classList.remove("active");
 };
 
+/* ⭐ התחלת מסלול */
+trackStartBtn.onclick = () => {
+    tracking = true;
+    trackPoints = [];
+    total2D = 0;
+    total3D = 0;
+    document.getElementById("track-info").style.display = "block";
+    trackStartBtn.classList.add("active");
+    trackStopBtn.classList.remove("active");
+};
+
+/* ⭐ סיום מסלול */
+trackStopBtn.onclick = () => {
+    tracking = false;
+    trackStartBtn.classList.remove("active");
+    trackStopBtn.classList.add("active");
+};
+
 /* ---------------------------------------------------------
    לחיצה על המפה — סימון + כתובת
 --------------------------------------------------------- */
@@ -349,7 +407,7 @@ map.on("click", async (e) => {
 });
 
 /* ---------------------------------------------------------
-   מיקום — watchPosition + חץ יציב
+   מיקום — watchPosition + חץ יציב + מסלול
 --------------------------------------------------------- */
 navigator.geolocation.watchPosition(showPosition, () => {}, {
     enableHighAccuracy: true,
@@ -397,9 +455,24 @@ async function showPosition(pos) {
         map.setView([lat, lng], 16);
     }
 
-    /* מסלול */
+    /* ⭐ מסלול */
     if (tracking && altitude !== null) {
+        if (trackPoints.length > 0) {
+            const prev = trackPoints[trackPoints.length - 1];
+
+            const d2d = map.distance([prev.lat, prev.lng], [lat, lng]);
+            const d3d = distance3D(prev.lat, prev.lng, prev.alt, lat, lng, altitude);
+
+            total2D += d2d;
+            total3D += d3d;
+
+            document.getElementById("track-info").innerHTML =
+                `מרחק 2D: ${(total2D/1000).toFixed(3)} ק״מ<br>` +
+                `מרחק 3D: ${(total3D/1000).toFixed(3)} ק״מ`;
+        }
+
         trackPoints.push({ lat, lng, alt: altitude });
+
         if (trackLine) map.removeLayer(trackLine);
         trackLine = L.polyline(trackPoints.map(p => [p.lat, p.lng]), { color: "red" }).addTo(map);
     }
